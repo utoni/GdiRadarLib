@@ -1,35 +1,43 @@
 #include "pch.h"
+#include "GdiRadar.h"
+
 #include <iostream>
 #include <vector>
-
-#include <Windows.h>
-#include <time.h>
-
-#pragma comment(lib, "Gdi32.lib")
 
 #define SCALE_X(posx) ((int)((float)GameMapWidth * (1000.0f / posx)))
 #define SCALE_Y(posy) ((int)((float)GameMapHeight * (1000.0f / posy)))
 
-static HWND myDrawWnd = NULL;
-static HINSTANCE hInstance = NULL;
-static WNDCLASS wc = { 0 };
-static float GameMapWidth = 0;
-static float GameMapHeight = 0;
 
-enum entity_color {
-	EC_RED
+struct gdi_radar_drawing
+{
+	HBRUSH EnemyBrush;
+	HBRUSH BackgroundBrush;
+	COLORREF TextCOLOR;
+	HFONT HFONT_Hunt;
+	RECT DC_Dimensions;
+	HDC hdc;
 };
 
-struct entity {
-	float pos[2];
-	float health;
-	enum entity_color color;
-	const char *name;
+struct gdi_radar_context
+{
+	PWSTR className;
+	PWSTR windowName;
+	HWND myDrawWnd;
+	HINSTANCE hInstance;
+	WNDCLASS wc;
+
+	clock_t minimumUpdateTime;
+	clock_t lastTimeUpdated;
+	float GameMapWidth;
+	float GameMapHeight;
+	size_t reservedEntities;
+
+	struct gdi_radar_drawing drawing;
+	std::vector<struct entity> entities;
 };
-std::vector<struct entity> entities;
 
 
-static void draw_entity(HDC hdc, float posx, float posy, float health, enum entity_color color, const char *name)
+static void draw_entity(struct gdi_radar_context * const ctx, float posx, float posy, float health, enum entity_color color, const char *name)
 {
 #if 0
 	RECT healthRect = { posx - 10, posy - 10, posx + 10, posy - 5 };
@@ -42,45 +50,59 @@ static void draw_entity(HDC hdc, float posx, float posy, float health, enum enti
 
 	switch (color) {
 	case EC_RED:
-		SetDCBrushColor(hdc, RGB(255, 0, 0));
+		SetDCBrushColor(ctx->drawing.hdc, RGB(255, 0, 0));
 		break;
 	}
-	std::cout << GameMapWidth << ", " << SCALE_X(posx) << std::endl;
-	Ellipse(hdc, SCALE_X(posx), SCALE_Y(posy), SCALE_X(posx + 5), SCALE_Y(posy + 5));
+	Ellipse(ctx->drawing.hdc, posx, posy, posx + 5, posy + 5);
 }
 
-LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam)
+static LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam)
 {
-	static HBRUSH EnemyBrush = NULL;
-	static HBRUSH BackgroundBrush = NULL;
-	static COLORREF TextCOLOR = NULL;
-	static HFONT HFONT_Hunt = NULL;
-	static RECT DC_Dimensions = {};
-	static HDC hdc = NULL;
+	struct gdi_radar_context * const ctx = (gdi_radar_context * const)lparam;
+
+	if (!ctx)
+	{
+		return DefWindowProc(hwnd, message, wparam, lparam);
+	}
+
+	struct gdi_radar_drawing * const drawing = &ctx->drawing;
+	if (!drawing)
+	{
+		return DefWindowProc(hwnd, message, wparam, lparam);
+	}
 
 	switch (message)
 	{
 	case WM_CREATE:
 		std::cout << "WM_CREATE\n";
-		hdc = GetDC(hwnd);
-		EnemyBrush = CreateSolidBrush(RGB(255, 0, 0));
-		BackgroundBrush = CreateSolidBrush(RGB(0, 0, 0));
-		TextCOLOR = RGB(0, 255, 0);
-		SetBkMode(hdc, TRANSPARENT);
+		drawing->hdc = GetDC(hwnd);
+		drawing->EnemyBrush = CreateSolidBrush(RGB(255, 0, 0));
+		drawing->BackgroundBrush = CreateSolidBrush(RGB(0, 0, 0));
+		drawing->TextCOLOR = RGB(0, 255, 0);
+		SetBkMode(drawing->hdc, TRANSPARENT);
 		return 0;
+	case WM_DESTROY:
+		std::cout << "WM_DESTROY\n";
+		DeleteObject(drawing->EnemyBrush);
+		DeleteObject(drawing->BackgroundBrush);
+		DeleteDC(drawing->hdc);
+		PostQuitMessage(0);
+		return 0;
+
 	case WM_PAINT:
 	{
 		std::cout << "WM_PAINT\n";
 		PAINTSTRUCT ps;
 
 		BeginPaint(hwnd, &ps);
-		for (auto& entity : entities) {
-			draw_entity(hdc, entity.pos[0], entity.pos[1], entity.health, entity.color, entity.name);
+		for (auto& entity : ctx->entities) {
+			draw_entity(ctx, entity.pos[0], entity.pos[1], entity.health, entity.color, entity.name);
 		}
 		EndPaint(hwnd, &ps);
 		return 0;
 	}
 	break;
+
 	case WM_LBUTTONDOWN:
 		std::cout << "WM_LBUTTONDOWN\n";
 		return 0;
@@ -95,62 +117,104 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam)
 		return 0;
 	case WM_SIZE:
 		std::cout << "WM_SIZE\n";
-		GetClientRect(hwnd, &DC_Dimensions);
-		FillRect(hdc, &DC_Dimensions, BackgroundBrush);
-		return 0;
-	case WM_DESTROY:
-		std::cout << "WM_DESTROY\n";
-		PostQuitMessage(0);
+		GetClientRect(hwnd, &drawing->DC_Dimensions);
+		FillRect(drawing->hdc, &drawing->DC_Dimensions, drawing->BackgroundBrush);
 		return 0;
 	}
+
 	return DefWindowProc(hwnd, message, wparam, lparam);
 }
 
-int main()
+struct gdi_radar_context * const
+	gdi_radar_configure(struct gdi_radar_config const * const cfg,
+		HINSTANCE hInst)
 {
-	static double last_time_called = 0.0;
-	double current_time;
+	struct gdi_radar_context * result = new gdi_radar_context;
 
-	std::cout << "Init\n";
+	/* config params */
+	result->className = _wcsdup(cfg->className);
+	result->windowName = _wcsdup(cfg->windowName);
+	result->minimumUpdateTime = cfg->minimumUpdateTime;
+	result->reservedEntities = cfg->reservedEntities;
+	result->entities.reserve(result->reservedEntities);
 
-	GameMapWidth = 1000.0f;
-	GameMapHeight = 1000.0f;
+	/* other */
+	result->hInstance = hInst;
+	result->wc.hbrBackground = (HBRUSH)GetStockObject(WHITE_BRUSH);
+	result->wc.hCursor = LoadCursor(result->hInstance, IDC_ARROW);
+	result->wc.hIcon = LoadIcon(result->hInstance, IDI_APPLICATION);
+	result->wc.hInstance = result->hInstance;
+	result->wc.lpfnWndProc = WndProc;
+	result->wc.lpszClassName = result->className;
+	result->wc.style = CS_HREDRAW | CS_VREDRAW;
 
-	hInstance = (HINSTANCE)GetWindowLongW(GetActiveWindow(), -6);
-	wc.hbrBackground = (HBRUSH)GetStockObject(WHITE_BRUSH);
-	wc.hCursor = LoadCursor(hInstance, IDC_ARROW);
-	wc.hIcon = LoadIcon(hInstance, IDI_APPLICATION);
-	wc.hInstance = hInstance;
-	wc.lpfnWndProc = WndProc;
-	wc.lpszClassName = L"peter";
-	wc.style = CS_HREDRAW | CS_VREDRAW;
+	return result;
+}
 
-	UnregisterClassW(L"peter", hInstance);
-	if (!RegisterClass(&wc))
+bool gdi_radar_init(struct gdi_radar_context * const ctx)
+{
+	UnregisterClassW(ctx->className, ctx->hInstance);
+	if (!RegisterClass(&ctx->wc))
 	{
-		return 1;
+		return false;
 	}
 
-	myDrawWnd = CreateWindowW(L"peter",
-		L"the window",
+	ctx->myDrawWnd = CreateWindowW(ctx->className, ctx->windowName,
 		WS_EX_LAYERED | WS_EX_TOPMOST | WS_EX_TOOLWINDOW | WS_MAXIMIZEBOX | WS_SIZEBOX,
 		50, 50, 640, 480,
-		NULL, NULL, hInstance, NULL);
-	ShowWindow(myDrawWnd, SW_SHOWNORMAL);
-	UpdateWindow(myDrawWnd);
-
-	last_time_called = clock();
-
-	entities.push_back(entity{ 0.0f, 0.0f, 100.0f, EC_RED, "test" });
-	entities.push_back(entity{ 1000.0f, 1000.0f, 50.0f, EC_RED, "m0wL" });
-	entities.push_back(entity{ 500.0f, 500.0f, 80.0f, EC_RED, "whiteshirt" });
-
-	MSG msg;
-	while (GetMessageA(&msg, myDrawWnd, 0, 0))
+		NULL, NULL, ctx->hInstance, ctx);
+	if (!ctx->myDrawWnd)
 	{
-		TranslateMessage(&msg);
-		DispatchMessage(&msg);
+		return false;
+	}
+	if (!ShowWindow(ctx->myDrawWnd, SW_SHOWNORMAL))
+	{
+		return false;
+	}
+	if (!UpdateWindow(ctx->myDrawWnd))
+	{
+		return false;
 	}
 
-	return 0;
+	ctx->lastTimeUpdated = clock();
+	return true;
+}
+
+void gdi_radar_add_entity(struct gdi_radar_context * const ctx,
+	struct entity const * const ent)
+{
+	ctx->entities.push_back(*ent);
+}
+
+void gdi_radar_clear_entities(struct gdi_radar_context * const ctx)
+{
+	ctx->entities.clear();
+}
+
+static inline LRESULT
+gdi_process_events(struct gdi_radar_context * const ctx, MSG * const msg)
+{
+	if (!TranslateMessage(msg))
+	{
+		return NULL;
+	}
+	return DispatchMessageW(msg);
+}
+
+void gdi_radar_process_window_events_blocking(struct gdi_radar_context * const ctx)
+{
+	MSG msg;
+	while (GetMessageW(&msg, ctx->myDrawWnd, 0, 0))
+	{
+		gdi_process_events(ctx, &msg);
+	}
+}
+
+void gdi_radar_process_window_events_nonblocking(struct gdi_radar_context * const ctx)
+{
+	MSG msg;
+	while (PeekMessageW(&msg, ctx->myDrawWnd, 0, 0, PM_REMOVE))
+	{
+		gdi_process_events(ctx, &msg);
+	}
 }
