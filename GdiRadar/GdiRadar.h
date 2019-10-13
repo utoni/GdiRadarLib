@@ -16,7 +16,8 @@ struct gdi_radar_context;
 
 static HINSTANCE gdi_radar_get_fake_hinstance()
 {
-	return (HINSTANCE)GetWindowLongW(GetActiveWindow(), -6);
+	LONG_PTR hi = GetWindowLongW(GetActiveWindow(), -6);
+	return (HINSTANCE)hi;
 }
 struct gdi_radar_context * const
 	gdi_radar_configure(struct gdi_radar_config const * const cfg,
@@ -47,5 +48,5 @@ static void gdi_radar_set_game_dimensions(struct gdi_radar_context * const ctx,
 	gdi_radar_set_game_dimensions(ctx,
 		(UINT64)GameMapWidth, (UINT64)GameMapHeight);
 }
-void gdi_radar_process_window_events_blocking(struct gdi_radar_context * const ctx);
-void gdi_radar_process_window_events_nonblocking(struct gdi_radar_context * const ctx);
+LRESULT gdi_radar_process_window_events_blocking(struct gdi_radar_context * const ctx);
+LRESULT gdi_radar_process_window_events_nonblocking(struct gdi_radar_context * const ctx);

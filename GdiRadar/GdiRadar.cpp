@@ -15,7 +15,6 @@ struct gdi_radar_drawing
 {
 	HBRUSH EnemyBrush;
 	COLORREF TextCOLOR;
-	HFONT HFONT_Hunt;
 	RECT DC_Dimensions;
 	HDC hdc;
 };
@@ -233,20 +232,24 @@ gdi_process_events(struct gdi_radar_context * const ctx, MSG * const msg)
 	return DispatchMessageW(msg);
 }
 
-void gdi_radar_process_window_events_blocking(struct gdi_radar_context * const ctx)
+LRESULT gdi_radar_process_window_events_blocking(struct gdi_radar_context * const ctx)
 {
+	LRESULT result = 0;
 	MSG msg;
 	while (GetMessageW(&msg, ctx->myDrawWnd, 0, 0))
 	{
-		gdi_process_events(ctx, &msg);
+		result = gdi_process_events(ctx, &msg);
 	}
+	return result;
 }
 
-void gdi_radar_process_window_events_nonblocking(struct gdi_radar_context * const ctx)
+LRESULT gdi_radar_process_window_events_nonblocking(struct gdi_radar_context * const ctx)
 {
+	LRESULT result = 0;
 	MSG msg;
 	while (PeekMessageW(&msg, ctx->myDrawWnd, 0, 0, PM_REMOVE))
 	{
-		gdi_process_events(ctx, &msg);
+		result = gdi_process_events(ctx, &msg);
 	}
+	return result;
 }
