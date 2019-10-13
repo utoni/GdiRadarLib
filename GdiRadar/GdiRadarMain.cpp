@@ -16,6 +16,7 @@ int main()
 	cfg.className = L"BlaTest";
 	cfg.windowName = L"BlaTestWindow";
 	cfg.minimumUpdateTime = 0.25f;
+	cfg.maximumRedrawFails = 5;
 	cfg.reservedEntities = 16;
 
 	std::cout << "Init\n";
@@ -38,7 +39,14 @@ int main()
 	entity e3{ 500.0f, 500.0f, 80.0f, entity_color::EC_RED, "whiteshirt" };
 	gdi_radar_add_entity(ctx, &e3);
 
+#if 0
 	gdi_radar_process_window_events_blocking(ctx);
+#else
+	do {
+		gdi_radar_redraw_if_necessary(ctx);
+		Sleep(200);
+	} while (!gdi_radar_process_window_events_nonblocking(ctx));
+#endif
 
 	return 0;
 }

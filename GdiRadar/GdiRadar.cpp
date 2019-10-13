@@ -27,7 +27,8 @@ struct gdi_radar_context
 	HWND myDrawWnd;
 	WNDCLASSW wc;
 
-	clock_t minimumUpdateTime;
+	double minimumUpdateTime;
+	UINT64 maximumRedrawFails;
 	clock_t lastTimeUpdated;
 	UINT64 GameMapWidth;
 	UINT64 GameMapHeight;
@@ -109,6 +110,8 @@ static LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM l
 			draw_entity(wnd_ctx, entity.pos[0], entity.pos[1], entity.health, entity.color, entity.name);
 		}
 		EndPaint(hwnd, &ps);
+
+		wnd_ctx->lastTimeUpdated = clock();
 		break;
 	}
 
@@ -147,7 +150,8 @@ struct gdi_radar_context * const
 	/* config params */
 	result->className = _wcsdup(cfg->className);
 	result->windowName = _wcsdup(cfg->windowName);
-	result->minimumUpdateTime = (clock_t)cfg->minimumUpdateTime;
+	result->minimumUpdateTime = cfg->minimumUpdateTime;
+	result->maximumRedrawFails = cfg->maximumRedrawFails;
 	result->reservedEntities = cfg->reservedEntities;
 	result->entities.reserve(result->reservedEntities);
 
@@ -216,6 +220,27 @@ void gdi_radar_add_entity(struct gdi_radar_context * const ctx,
 void gdi_radar_clear_entities(struct gdi_radar_context * const ctx)
 {
 	ctx->entities.clear();
+}
+
+bool gdi_radar_redraw_if_necessary(struct gdi_radar_context * const ctx)
+{
+	clock_t end;
+	double cpu_time_used;
+
+	end = clock();
+	cpu_time_used = ((double)(end - ctx->lastTimeUpdated)) / CLOCKS_PER_SEC;
+	std::cout << "Time past after last update: " << cpu_time_used << std::endl;
+
+	if (cpu_time_used > ctx->minimumUpdateTime) {
+		if (cpu_time_used > ctx->minimumUpdateTime * ctx->maximumRedrawFails) {
+			std::cout << "ERROR: Redraw failed for the last "
+				<< ctx->maximumRedrawFails << " times!\n";
+			return false;
+		}
+		RedrawWindow(ctx->myDrawWnd, NULL, NULL, RDW_INVALIDATE);
+	}
+
+	return true;
 }
 
 void gdi_radar_set_game_dimensions(struct gdi_radar_context * const ctx,
