@@ -7,16 +7,18 @@
 #pragma comment(lib, "Gdi32.lib")
 
 #define INVALID_MAP_VALUE ((UINT64)0)
-#define SCALE_X(posx) ((int)((float)GameMapWidth * (1000.0f / posx)))
-#define SCALE_Y(posy) ((int)((float)GameMapHeight * (1000.0f / posy)))
 
 
 struct gdi_radar_drawing
 {
 	HBRUSH EnemyBrush;
+	HPEN DefaultPen;
 	COLORREF TextCOLOR;
 	RECT DC_Dimensions;
 	HDC hdc;
+	UINT64 GameMapWindowWidth;
+	UINT64 GameMapWindowHeight;
+	bool StickToBottom;
 };
 
 struct gdi_radar_context
@@ -39,7 +41,7 @@ struct gdi_radar_context
 };
 
 
-static void draw_entity(struct gdi_radar_context * const ctx, float posx, float posy, float health, enum entity_color color, const char *name)
+static void draw_entity(struct gdi_radar_context * const ctx, struct entity * const ent)
 {
 #if 0
 	RECT healthRect = { posx - 10, posy - 10, posx + 10, posy - 5 };
@@ -50,12 +52,32 @@ static void draw_entity(struct gdi_radar_context * const ctx, float posx, float 
 		DT_SINGLELINE | DT_CENTER | DT_VCENTER);
 #endif
 
-	switch (color) {
+	switch (ent->color) {
 	case EC_RED:
-		SetDCBrushColor(ctx->drawing.hdc, RGB(255, 0, 0));
+		SelectObject(ctx->drawing.hdc, ctx->drawing.EnemyBrush);
 		break;
 	}
-	Ellipse(ctx->drawing.hdc, posx, posy, posx + 5, posy + 5);
+
+	float frealx = ent->pos[0] * ((float)ctx->drawing.GameMapWindowWidth / ctx->GameMapWidth);
+	float frealy = ent->pos[1] * ((float)ctx->drawing.GameMapWindowHeight / ctx->GameMapHeight);
+	int realx = (int)frealx;
+	int realy = (int)frealy;
+	Ellipse(ctx->drawing.hdc, realx - 5, realy - 5, realx + 5, realy + 5);
+}
+
+static void CalcGameToWindowDimensions(struct gdi_radar_context * const ctx)
+{
+	float aspectRatio = (float)ctx->GameMapWidth / ctx->GameMapHeight;
+	if (ctx->drawing.StickToBottom) {
+		float newWidth = (float)ctx->drawing.DC_Dimensions.bottom / aspectRatio;
+		ctx->drawing.GameMapWindowHeight = ctx->drawing.DC_Dimensions.bottom - 1;
+		ctx->drawing.GameMapWindowWidth = (UINT64)newWidth;
+	}
+	else {
+		float newHeight = (float)ctx->drawing.DC_Dimensions.right / aspectRatio;
+		ctx->drawing.GameMapWindowHeight = (UINT64)newHeight;
+		ctx->drawing.GameMapWindowWidth = ctx->drawing.DC_Dimensions.right - 1;
+	}
 }
 
 static LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam)
@@ -90,12 +112,14 @@ static LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM l
 		std::cout << "WM_CREATE\n";
 		drawing->hdc = GetDC(hwnd);
 		drawing->EnemyBrush = CreateSolidBrush(RGB(255, 0, 0));
+		drawing->DefaultPen = CreatePen(PS_SOLID, 1, RGB(255, 255, 0));
 		drawing->TextCOLOR = RGB(0, 255, 0);
 		SetBkMode(drawing->hdc, TRANSPARENT);
 		return 0;
 	case WM_DESTROY:
 		std::cout << "WM_DESTROY\n";
 		DeleteObject(drawing->EnemyBrush);
+		DeleteObject(drawing->DefaultPen);
 		DeleteDC(drawing->hdc);
 		PostQuitMessage(0);
 		return 0;
@@ -106,8 +130,14 @@ static LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM l
 		PAINTSTRUCT ps;
 
 		BeginPaint(hwnd, &ps);
+
+		SelectObject(drawing->hdc, drawing->DefaultPen);
+		POINT lines[] = { { 0,0 }, { (LONG)drawing->GameMapWindowWidth, 0 },
+			{ (LONG)drawing->GameMapWindowWidth,  (LONG)drawing->GameMapWindowHeight },
+			{ 0, (LONG)drawing->GameMapWindowHeight }, { 0,0 } };
+		Polyline(drawing->hdc, lines, 5);
 		for (auto& entity : wnd_ctx->entities) {
-			draw_entity(wnd_ctx, entity.pos[0], entity.pos[1], entity.health, entity.color, entity.name);
+			draw_entity(wnd_ctx, &entity);
 		}
 		EndPaint(hwnd, &ps);
 
@@ -129,6 +159,8 @@ static LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM l
 		break;
 	case WM_SIZE:
 		std::cout << "WM_SIZE\n";
+		GetClientRect(hwnd, &drawing->DC_Dimensions);
+		CalcGameToWindowDimensions(wnd_ctx);
 		break;
 	}
 
@@ -211,10 +243,40 @@ bool gdi_radar_init(struct gdi_radar_context * const ctx)
 	return true;
 }
 
-void gdi_radar_add_entity(struct gdi_radar_context * const ctx,
-	struct entity const * const ent)
+static void gdi_radar_check_entity_bounds(struct gdi_radar_context * const ctx,
+	struct entity * const ent)
 {
+	if (ent->pos[0] < 0)
+	{
+		ent->pos[0] = 0;
+	}
+	if (ent->pos[0] > ctx->GameMapWidth)
+	{
+		ent->pos[0] = (int)ctx->GameMapWidth;
+	}
+	if (ent->pos[1] < 0)
+	{
+		ent->pos[1] = 0;
+	}
+	if (ent->pos[1] > ctx->GameMapHeight)
+	{
+		ent->pos[1] = (int)ctx->GameMapHeight;
+	}
+}
+
+void gdi_radar_add_entity(struct gdi_radar_context * const ctx,
+	struct entity * const ent)
+{
+	gdi_radar_check_entity_bounds(ctx, ent);
 	ctx->entities.push_back(*ent);
+}
+
+void gdi_radar_set_entity(struct gdi_radar_context * const ctx, size_t i,
+	struct entity * const ent)
+{
+	struct entity& found_ent = ctx->entities.at(i);
+	gdi_radar_check_entity_bounds(ctx, ent);
+	found_ent = *ent;
 }
 
 void gdi_radar_clear_entities(struct gdi_radar_context * const ctx)
@@ -237,17 +299,18 @@ bool gdi_radar_redraw_if_necessary(struct gdi_radar_context * const ctx)
 				<< ctx->maximumRedrawFails << " times!\n";
 			return false;
 		}
-		RedrawWindow(ctx->myDrawWnd, NULL, NULL, RDW_INVALIDATE);
+		RedrawWindow(ctx->myDrawWnd, NULL, NULL, RDW_ERASE | RDW_INVALIDATE | RDW_ALLCHILDREN);
 	}
 
 	return true;
 }
 
 void gdi_radar_set_game_dimensions(struct gdi_radar_context * const ctx,
-	UINT64 GameMapWidth, UINT64 GameMapHeight)
+	UINT64 GameMapWidth, UINT64 GameMapHeight, bool StickToBottom)
 {
 	ctx->GameMapWidth = GameMapWidth;
 	ctx->GameMapHeight = GameMapHeight;
+	ctx->drawing.StickToBottom = StickToBottom;
 }
 
 static inline LRESULT

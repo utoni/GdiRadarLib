@@ -31,7 +31,7 @@ enum entity_color {
 };
 
 struct entity {
-	float pos[2];
+	int pos[2];
 	float health;
 	enum entity_color color;
 	const char *name;
@@ -39,16 +39,18 @@ struct entity {
 
 
 void gdi_radar_add_entity(struct gdi_radar_context * const ctx,
-	struct entity const * const ent);
+	struct entity * const ent);
+void gdi_radar_set_entity(struct gdi_radar_context * const ctx, size_t i,
+	struct entity * const ent);
 void gdi_radar_clear_entities(struct gdi_radar_context * const ctx);
 bool gdi_radar_redraw_if_necessary(struct gdi_radar_context * const ctx);
 void gdi_radar_set_game_dimensions(struct gdi_radar_context * const ctx,
-	UINT64 GameMapWidth, UINT64 GameMapHeight);
+	UINT64 GameMapWidth, UINT64 GameMapHeight, bool StickToBottom = true);
 static void gdi_radar_set_game_dimensions(struct gdi_radar_context * const ctx,
-	float GameMapWidth, float GameMapHeight)
+	float GameMapWidth, float GameMapHeight, bool StickToBottom = true)
 {
 	gdi_radar_set_game_dimensions(ctx,
-		(UINT64)GameMapWidth, (UINT64)GameMapHeight);
+		(UINT64)GameMapWidth, (UINT64)GameMapHeight, StickToBottom);
 }
 LRESULT gdi_radar_process_window_events_blocking(struct gdi_radar_context * const ctx);
 LRESULT gdi_radar_process_window_events_nonblocking(struct gdi_radar_context * const ctx);
