@@ -172,7 +172,6 @@ static LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM l
 		break;
 	}
 
-	//std::cout << "Default window proc for message 0x" << std::hex << message << std::endl;
 	return DefWindowProcW(hwnd, message, wparam, lparam);
 }
 
@@ -298,7 +297,9 @@ bool gdi_radar_redraw_if_necessary(struct gdi_radar_context * const ctx)
 
 	end = clock();
 	cpu_time_used = ((double)(end - ctx->lastTimeUpdated)) / CLOCKS_PER_SEC;
+#ifdef _DEBUG
 	DBG("Time past after last update: %lf\n", cpu_time_used);
+#endif
 
 	if (cpu_time_used > ctx->minimumUpdateTime) {
 		if (cpu_time_used > ctx->minimumUpdateTime * ctx->maximumRedrawFails) {
