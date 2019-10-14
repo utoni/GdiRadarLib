@@ -53,7 +53,7 @@ int main()
 		e4.pos[0]++;
 		e4.pos[1]++;
 		gdi_radar_set_entity(ctx, 3, &e4);
-	} while (!gdi_radar_process_window_events_nonblocking(ctx));
+	} while (gdi_radar_process_window_events_nonblocking(ctx));
 #endif
 
 	return 0;

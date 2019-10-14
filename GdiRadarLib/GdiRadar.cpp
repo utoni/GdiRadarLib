@@ -7,9 +7,9 @@
 #pragma comment(lib, "Gdi32.lib")
 
 #ifdef _VERBOSE
-#define DBG(cout_stmt) cout_stmt
+#define DBG(fmt, ...) printf(fmt, __VA_ARGS__)
 #else
-#define DBG(cout_stmt)
+#define DBG(fmt, ...)
 #endif
 
 #define INVALID_MAP_VALUE ((UINT64)0)
@@ -101,21 +101,21 @@ static LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM l
 
 	if (!wnd_ctx)
 	{
-		DBG(std::cout << "WndProc: ctx NULL!\n");
+		DBG("%s\n", "WndProc: ctx NULL!");
 		return DefWindowProc(hwnd, message, wparam, lparam);
 	}
 
 	struct gdi_radar_drawing * const drawing = &wnd_ctx->drawing;
 	if (!drawing)
 	{
-		DBG(std::cout << "WndProc: drawing NULL!\n");
+		DBG("%s\n", "WndProc: drawing NULL!");
 		return DefWindowProc(hwnd, message, wparam, lparam);
 	}
 
 	switch (message)
 	{
 	case WM_CREATE:
-		DBG(std::cout << "WM_CREATE\n");
+		DBG("%s\n", "WM_CREATE");
 		drawing->hdc = GetDC(hwnd);
 		drawing->EnemyBrush = CreateSolidBrush(RGB(255, 0, 0));
 		drawing->DefaultPen = CreatePen(PS_SOLID, 1, RGB(255, 255, 0));
@@ -123,7 +123,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM l
 		SetBkMode(drawing->hdc, TRANSPARENT);
 		return 0;
 	case WM_DESTROY:
-		DBG(std::cout << "WM_DESTROY\n");
+		DBG("%s\n", "WM_DESTROY");
 		DeleteObject(drawing->EnemyBrush);
 		DeleteObject(drawing->DefaultPen);
 		DeleteDC(drawing->hdc);
@@ -132,7 +132,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM l
 
 	case WM_PAINT:
 	{
-		DBG(std::cout << "WM_PAINT\n");
+		DBG("%s\n", "WM_PAINT");
 		PAINTSTRUCT ps;
 
 		BeginPaint(hwnd, &ps);
@@ -154,19 +154,19 @@ static LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM l
 	}
 
 	case WM_LBUTTONDOWN:
-		DBG(std::cout << "WM_LBUTTONDOWN\n");
+		DBG("%s\n", "WM_LBUTTONDOWN");
 		break;
 	case WM_NCLBUTTONDOWN:
-		DBG(std::cout << "WM_NCLBUTTONDOWN\n");
+		DBG("%s\n", "WM_NCLBUTTONDOWN");
 		break;
 	case WM_CHAR:
-		DBG(std::cout << "WM_CHAR\n");
+		DBG("%s\n", "WM_CHAR");
 		break;
 	case WM_MOVE:
-		DBG(std::cout << "WM_MOVE\n");
+		DBG("%s\n", "WM_MOVE");
 		break;
 	case WM_SIZE:
-		DBG(std::cout << "WM_SIZE\n");
+		DBG("%s\n", "WM_SIZE");
 		GetClientRect(hwnd, &drawing->DC_Dimensions);
 		CalcGameToWindowDimensions(wnd_ctx);
 		break;
@@ -214,7 +214,7 @@ bool gdi_radar_init(struct gdi_radar_context * const ctx)
 	if (ctx->GameMapWidth == INVALID_MAP_VALUE ||
 		ctx->GameMapHeight == INVALID_MAP_VALUE)
 	{
-		DBG(std::cout << "Invalid game map dimensions!\n");
+		DBG("%s\n", "Invalid game map dimensions!");
 		return false;
 	}
 
@@ -222,8 +222,7 @@ bool gdi_radar_init(struct gdi_radar_context * const ctx)
 	ctx->classAtom = RegisterClassW(&ctx->wc);
 	if (!ctx->classAtom)
 	{
-		DBG(std::cout << "Register window class failed with 0x"
-			<< std::hex << GetLastError() << "!\n");
+		DBG("Register window class failed with 0x%X!\n", GetLastError());
 		return false;
 	}
 
@@ -234,16 +233,16 @@ bool gdi_radar_init(struct gdi_radar_context * const ctx)
 		NULL, NULL, ctx->wc.hInstance, ctx);
 	if (!ctx->myDrawWnd)
 	{
-		DBG(std::cout << "Create window failed!\n");
+		DBG("%s\n", "Create window failed!");
 		return false;
 	}
 	if (!ShowWindow(ctx->myDrawWnd, SW_SHOWNORMAL))
 	{
-		DBG(std::cout << "Show window failed!\n");
+		DBG("%s\n", "Show window failed!");
 	}
 	if (!UpdateWindow(ctx->myDrawWnd))
 	{
-		DBG(std::cout << "Update window failed!\n");
+		DBG("%s\n", "Update window failed!");
 		return false;
 	}
 
@@ -299,12 +298,12 @@ bool gdi_radar_redraw_if_necessary(struct gdi_radar_context * const ctx)
 
 	end = clock();
 	cpu_time_used = ((double)(end - ctx->lastTimeUpdated)) / CLOCKS_PER_SEC;
-	DBG(std::cout << "Time past after last update: " << cpu_time_used << std::endl);
+	DBG("Time past after last update: %lf\n", cpu_time_used);
 
 	if (cpu_time_used > ctx->minimumUpdateTime) {
 		if (cpu_time_used > ctx->minimumUpdateTime * ctx->maximumRedrawFails) {
-			DBG(std::cout << "ERROR: Redraw failed for the last "
-				<< ctx->maximumRedrawFails << " times!\n");
+			DBG("ERROR: Redraw failed for the last %llu times!\n",
+				ctx->maximumRedrawFails);
 			return false;
 		}
 		RedrawWindow(ctx->myDrawWnd, NULL, NULL, RDW_ERASE | RDW_INVALIDATE | RDW_ALLCHILDREN);
@@ -330,22 +329,20 @@ gdi_process_events(struct gdi_radar_context * const ctx, MSG * const msg)
 
 LRESULT gdi_radar_process_window_events_blocking(struct gdi_radar_context * const ctx)
 {
-	LRESULT result = 0;
 	MSG msg;
 	while (GetMessageW(&msg, ctx->myDrawWnd, 0, 0))
 	{
-		result = gdi_process_events(ctx, &msg);
+		gdi_process_events(ctx, &msg);
 	}
-	return result;
+	return 1;
 }
 
 LRESULT gdi_radar_process_window_events_nonblocking(struct gdi_radar_context * const ctx)
 {
-	LRESULT result = 0;
 	MSG msg;
 	while (PeekMessageW(&msg, ctx->myDrawWnd, 0, 0, PM_REMOVE))
 	{
-		result = gdi_process_events(ctx, &msg);
+		gdi_process_events(ctx, &msg);
 	}
-	return result;
+	return 1;
 }
