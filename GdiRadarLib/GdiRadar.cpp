@@ -6,6 +6,12 @@
 
 #pragma comment(lib, "Gdi32.lib")
 
+#ifdef _DEBUG
+#define DBG(cout_stmt) cout_stmt
+#else
+#define DBG(cout_stmt)
+#endif
+
 #define INVALID_MAP_VALUE ((UINT64)0)
 
 
@@ -95,21 +101,21 @@ static LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM l
 
 	if (!wnd_ctx)
 	{
-		std::cout << "WndProc: ctx NULL!\n";
+		DBG(std::cout << "WndProc: ctx NULL!\n");
 		return DefWindowProc(hwnd, message, wparam, lparam);
 	}
 
 	struct gdi_radar_drawing * const drawing = &wnd_ctx->drawing;
 	if (!drawing)
 	{
-		std::cout << "WndProc: drawing NULL!\n";
+		DBG(std::cout << "WndProc: drawing NULL!\n");
 		return DefWindowProc(hwnd, message, wparam, lparam);
 	}
 
 	switch (message)
 	{
 	case WM_CREATE:
-		std::cout << "WM_CREATE\n";
+		DBG(std::cout << "WM_CREATE\n");
 		drawing->hdc = GetDC(hwnd);
 		drawing->EnemyBrush = CreateSolidBrush(RGB(255, 0, 0));
 		drawing->DefaultPen = CreatePen(PS_SOLID, 1, RGB(255, 255, 0));
@@ -117,7 +123,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM l
 		SetBkMode(drawing->hdc, TRANSPARENT);
 		return 0;
 	case WM_DESTROY:
-		std::cout << "WM_DESTROY\n";
+		DBG(std::cout << "WM_DESTROY\n");
 		DeleteObject(drawing->EnemyBrush);
 		DeleteObject(drawing->DefaultPen);
 		DeleteDC(drawing->hdc);
@@ -126,7 +132,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM l
 
 	case WM_PAINT:
 	{
-		std::cout << "WM_PAINT\n";
+		DBG(std::cout << "WM_PAINT\n");
 		PAINTSTRUCT ps;
 
 		BeginPaint(hwnd, &ps);
@@ -146,19 +152,19 @@ static LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM l
 	}
 
 	case WM_LBUTTONDOWN:
-		std::cout << "WM_LBUTTONDOWN\n";
+		DBG(std::cout << "WM_LBUTTONDOWN\n");
 		break;
 	case WM_NCLBUTTONDOWN:
-		std::cout << "WM_NCLBUTTONDOWN\n";
+		DBG(std::cout << "WM_NCLBUTTONDOWN\n");
 		break;
 	case WM_CHAR:
-		std::cout << "WM_CHAR\n";
+		DBG(std::cout << "WM_CHAR\n");
 		break;
 	case WM_MOVE:
-		std::cout << "WM_MOVE\n";
+		DBG(std::cout << "WM_MOVE\n");
 		break;
 	case WM_SIZE:
-		std::cout << "WM_SIZE\n";
+		DBG(std::cout << "WM_SIZE\n");
 		GetClientRect(hwnd, &drawing->DC_Dimensions);
 		CalcGameToWindowDimensions(wnd_ctx);
 		break;
@@ -206,7 +212,7 @@ bool gdi_radar_init(struct gdi_radar_context * const ctx)
 	if (ctx->GameMapWidth == INVALID_MAP_VALUE ||
 		ctx->GameMapHeight == INVALID_MAP_VALUE)
 	{
-		std::cout << "Invalid game map dimensions!\n";
+		DBG(std::cout << "Invalid game map dimensions!\n");
 		return false;
 	}
 
@@ -214,8 +220,8 @@ bool gdi_radar_init(struct gdi_radar_context * const ctx)
 	ctx->classAtom = RegisterClassW(&ctx->wc);
 	if (!ctx->classAtom)
 	{
-		std::cout << "Register window class failed with 0x"
-			<< std::hex << GetLastError() << "!\n";
+		DBG(std::cout << "Register window class failed with 0x"
+			<< std::hex << GetLastError() << "!\n");
 		return false;
 	}
 
@@ -226,16 +232,16 @@ bool gdi_radar_init(struct gdi_radar_context * const ctx)
 		NULL, NULL, ctx->wc.hInstance, ctx);
 	if (!ctx->myDrawWnd)
 	{
-		std::cout << "Create window failed!\n";
+		DBG(std::cout << "Create window failed!\n");
 		return false;
 	}
 	if (!ShowWindow(ctx->myDrawWnd, SW_SHOWNORMAL))
 	{
-		std::cout << "Show window failed!\n";
+		DBG(std::cout << "Show window failed!\n");
 	}
 	if (!UpdateWindow(ctx->myDrawWnd))
 	{
-		std::cout << "Update window failed!\n";
+		DBG(std::cout << "Update window failed!\n");
 		return false;
 	}
 
@@ -291,12 +297,12 @@ bool gdi_radar_redraw_if_necessary(struct gdi_radar_context * const ctx)
 
 	end = clock();
 	cpu_time_used = ((double)(end - ctx->lastTimeUpdated)) / CLOCKS_PER_SEC;
-	std::cout << "Time past after last update: " << cpu_time_used << std::endl;
+	DBG(std::cout << "Time past after last update: " << cpu_time_used << std::endl);
 
 	if (cpu_time_used > ctx->minimumUpdateTime) {
 		if (cpu_time_used > ctx->minimumUpdateTime * ctx->maximumRedrawFails) {
-			std::cout << "ERROR: Redraw failed for the last "
-				<< ctx->maximumRedrawFails << " times!\n";
+			DBG(std::cout << "ERROR: Redraw failed for the last "
+				<< ctx->maximumRedrawFails << " times!\n");
 			return false;
 		}
 		RedrawWindow(ctx->myDrawWnd, NULL, NULL, RDW_ERASE | RDW_INVALIDATE | RDW_ALLCHILDREN);
