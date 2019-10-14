@@ -6,7 +6,7 @@
 
 #pragma comment(lib, "Gdi32.lib")
 
-#ifdef _DEBUG
+#ifdef _VERBOSE
 #define DBG(cout_stmt) cout_stmt
 #else
 #define DBG(cout_stmt)
