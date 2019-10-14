@@ -142,9 +142,11 @@ static LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM l
 			{ (LONG)drawing->GameMapWindowWidth,  (LONG)drawing->GameMapWindowHeight },
 			{ 0, (LONG)drawing->GameMapWindowHeight }, { 0,0 } };
 		Polyline(drawing->hdc, lines, 5);
-		for (auto& entity : wnd_ctx->entities) {
-			draw_entity(wnd_ctx, &entity);
+
+		for (size_t i = 0; i < wnd_ctx->entities.size(); ++i) {
+			draw_entity(wnd_ctx, &wnd_ctx->entities.at(i));
 		}
+
 		EndPaint(hwnd, &ps);
 
 		wnd_ctx->lastTimeUpdated = clock();
