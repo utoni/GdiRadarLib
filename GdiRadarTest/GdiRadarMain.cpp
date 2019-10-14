@@ -38,6 +38,8 @@ int main()
 	gdi_radar_add_entity(ctx, &e2);
 	entity e3{ 500, 500, 80, entity_color::EC_RED, "whiteshirt" };
 	gdi_radar_add_entity(ctx, &e3);
+	entity e4{ 50, 800, 10, entity_color::EC_RED, "lowlife" };
+	gdi_radar_add_entity(ctx, &e4);
 
 #if 0
 	gdi_radar_process_window_events_blocking(ctx);
@@ -48,6 +50,9 @@ int main()
 
 		e3.pos[0]++;
 		gdi_radar_set_entity(ctx, 2, &e3);
+		e4.pos[0]++;
+		e4.pos[1]++;
+		gdi_radar_set_entity(ctx, 3, &e4);
 	} while (!gdi_radar_process_window_events_nonblocking(ctx));
 #endif
 
