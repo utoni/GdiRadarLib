@@ -27,7 +27,7 @@ bool gdi_radar_init(struct gdi_radar_context * const ctx);
 
 
 enum entity_color {
-	EC_RED
+	EC_BLACK, EC_RED
 };
 
 struct entity {

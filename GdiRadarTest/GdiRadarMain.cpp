@@ -40,6 +40,8 @@ int main()
 	gdi_radar_add_entity(ctx, &e3);
 	entity e4{ 50, 800, 10, entity_color::EC_RED, "lowlife" };
 	gdi_radar_add_entity(ctx, &e4);
+	entity e5{ 250, 100, 0, entity_color::EC_BLACK, "dead" };
+	gdi_radar_add_entity(ctx, &e5);
 
 #if 0
 	gdi_radar_process_window_events_blocking(ctx);
