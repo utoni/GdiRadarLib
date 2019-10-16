@@ -89,6 +89,16 @@ static void CalcGameToWindowDimensions(struct gdi_radar_context * const ctx)
 	}
 }
 
+static void CleanupWindowMemory(struct gdi_radar_context * const ctx)
+{
+	struct gdi_radar_drawing * const drawing = &ctx->drawing;
+
+	DeleteObject(drawing->BlackBrush);
+	DeleteObject(drawing->RedBrush);
+	DeleteObject(drawing->DefaultPen);
+	DeleteDC(drawing->hdc);
+}
+
 static LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam)
 {
 	struct gdi_radar_context * wnd_ctx = NULL;
@@ -128,10 +138,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM l
 		return 0;
 	case WM_DESTROY:
 		DBG("%s\n", "WM_DESTROY");
-		DeleteObject(drawing->BlackBrush);
-		DeleteObject(drawing->RedBrush);
-		DeleteObject(drawing->DefaultPen);
-		DeleteDC(drawing->hdc);
+		CleanupWindowMemory(wnd_ctx);
 		PostQuitMessage(0);
 		return 0;
 
@@ -215,6 +222,11 @@ struct gdi_radar_context * const
 
 bool gdi_radar_init(struct gdi_radar_context * const ctx)
 {
+	if (!ctx)
+	{
+		return false;
+	}
+
 	if (ctx->GameMapWidth == INVALID_MAP_VALUE ||
 		ctx->GameMapHeight == INVALID_MAP_VALUE)
 	{
@@ -278,6 +290,11 @@ static void gdi_radar_check_entity_bounds(struct gdi_radar_context * const ctx,
 void gdi_radar_add_entity(struct gdi_radar_context * const ctx,
 	struct entity * const ent)
 {
+	if (!ctx)
+	{
+		return;
+	}
+
 	gdi_radar_check_entity_bounds(ctx, ent);
 	ctx->entities.push_back(*ent);
 }
@@ -285,6 +302,11 @@ void gdi_radar_add_entity(struct gdi_radar_context * const ctx,
 void gdi_radar_set_entity(struct gdi_radar_context * const ctx, size_t i,
 	struct entity * const ent)
 {
+	if (!ctx)
+	{
+		return;
+	}
+
 	struct entity& found_ent = ctx->entities.at(i);
 	gdi_radar_check_entity_bounds(ctx, ent);
 	found_ent = *ent;
@@ -292,6 +314,11 @@ void gdi_radar_set_entity(struct gdi_radar_context * const ctx, size_t i,
 
 void gdi_radar_clear_entities(struct gdi_radar_context * const ctx)
 {
+	if (!ctx)
+	{
+		return;
+	}
+
 	ctx->entities.clear();
 }
 
@@ -299,6 +326,11 @@ bool gdi_radar_redraw_if_necessary(struct gdi_radar_context * const ctx)
 {
 	clock_t end;
 	double cpu_time_used;
+
+	if (!ctx)
+	{
+		return false;
+	}
 
 	end = clock();
 	cpu_time_used = ((double)(end - ctx->lastTimeUpdated)) / CLOCKS_PER_SEC;
@@ -321,6 +353,11 @@ bool gdi_radar_redraw_if_necessary(struct gdi_radar_context * const ctx)
 void gdi_radar_set_game_dimensions(struct gdi_radar_context * const ctx,
 	UINT64 GameMapWidth, UINT64 GameMapHeight, bool StickToBottom)
 {
+	if (!ctx)
+	{
+		return;
+	}
+
 	ctx->GameMapWidth = GameMapWidth;
 	ctx->GameMapHeight = GameMapHeight;
 	ctx->drawing.StickToBottom = StickToBottom;
@@ -336,6 +373,12 @@ gdi_process_events(struct gdi_radar_context * const ctx, MSG * const msg)
 LRESULT gdi_radar_process_window_events_blocking(struct gdi_radar_context * const ctx)
 {
 	MSG msg;
+
+	if (!ctx)
+	{
+		return 0;
+	}
+
 	while (GetMessageW(&msg, ctx->myDrawWnd, 0, 0))
 	{
 		gdi_process_events(ctx, &msg);
@@ -346,9 +389,29 @@ LRESULT gdi_radar_process_window_events_blocking(struct gdi_radar_context * cons
 LRESULT gdi_radar_process_window_events_nonblocking(struct gdi_radar_context * const ctx)
 {
 	MSG msg;
+
+	if (!ctx)
+	{
+		return 0;
+	}
+
 	while (PeekMessageW(&msg, ctx->myDrawWnd, 0, 0, PM_REMOVE))
 	{
 		gdi_process_events(ctx, &msg);
 	}
 	return 1;
+}
+
+void gdi_radar_close_and_cleanup(struct gdi_radar_context ** const ctx)
+{
+	if (!ctx || !*ctx)
+	{
+		return;
+	}
+
+	CloseWindow((*ctx)->myDrawWnd);
+	DestroyWindow((*ctx)->myDrawWnd);
+	CleanupWindowMemory(*ctx);
+
+	*ctx = NULL;
 }

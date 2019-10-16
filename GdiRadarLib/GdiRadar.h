@@ -54,3 +54,4 @@ static void gdi_radar_set_game_dimensions(struct gdi_radar_context * const ctx,
 }
 LRESULT gdi_radar_process_window_events_blocking(struct gdi_radar_context * const ctx);
 LRESULT gdi_radar_process_window_events_nonblocking(struct gdi_radar_context * const ctx);
+void gdi_radar_close_and_cleanup(struct gdi_radar_context ** const ctx);
