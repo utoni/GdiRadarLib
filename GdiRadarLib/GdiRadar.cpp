@@ -17,7 +17,7 @@
 
 struct gdi_radar_drawing
 {
-	HBRUSH BlackBrush, RedBrush;
+	HBRUSH BlueBrush, BlackBrush, RedBrush;
 	HPEN DefaultPen;
 	COLORREF TextCOLOR;
 	RECT DC_Dimensions;
@@ -59,6 +59,9 @@ static void draw_entity(struct gdi_radar_context * const ctx, struct entity * co
 #endif
 
 	switch (ent->color) {
+	case EC_BLUE:
+		SelectObject(ctx->drawing.hdc, ctx->drawing.BlueBrush);
+		break;
 	case EC_BLACK:
 		SelectObject(ctx->drawing.hdc, ctx->drawing.BlackBrush);
 		break;
@@ -93,6 +96,7 @@ static void CleanupWindowMemory(struct gdi_radar_context * const ctx)
 {
 	struct gdi_radar_drawing * const drawing = &ctx->drawing;
 
+	DeleteObject(drawing->BlueBrush);
 	DeleteObject(drawing->BlackBrush);
 	DeleteObject(drawing->RedBrush);
 	DeleteObject(drawing->DefaultPen);
@@ -130,6 +134,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM l
 	case WM_CREATE:
 		DBG("%s\n", "WM_CREATE");
 		drawing->hdc = GetDC(hwnd);
+		drawing->BlueBrush = CreateSolidBrush(RGB(0, 0, 255));
 		drawing->BlackBrush = CreateSolidBrush(RGB(0, 0, 0));
 		drawing->RedBrush = CreateSolidBrush(RGB(255, 0, 0));
 		drawing->DefaultPen = CreatePen(PS_SOLID, 1, RGB(255, 255, 0));
