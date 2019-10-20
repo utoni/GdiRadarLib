@@ -10,7 +10,7 @@
 
 int main()
 {
-	gdi_radar_config cfg;
+	gdi_radar_config cfg = {};
 	gdi_radar_context * ctx;
 
 	cfg.className = L"BlaTest";
@@ -18,6 +18,7 @@ int main()
 	cfg.minimumUpdateTime = 0.25f;
 	cfg.maximumRedrawFails = 5;
 	cfg.reservedEntities = 16;
+	cfg.drawAngles = true;
 
 	std::cout << "Init\n";
 
@@ -32,15 +33,15 @@ int main()
 		std::cout << "Radar initialize failed\n";
 	}
 
-	entity e1{ 0, 0, 100, entity_color::EC_RED, "test" };
+	entity e1{ 0, 0, 0.0f, 100.0f, entity_color::EC_RED, "test" };
 	gdi_radar_add_entity(ctx, &e1);
-	entity e2{ 1000, 1000, 50, entity_color::EC_RED, "m0wL" };
+	entity e2{ 1000, 1000, 0.0f, 50.0f, entity_color::EC_RED, "m0wL" };
 	gdi_radar_add_entity(ctx, &e2);
-	entity e3{ 500, 500, 80, entity_color::EC_RED, "whiteshirt" };
+	entity e3{ 500, 500, 0.0f, 80.0f, entity_color::EC_RED, "whiteshirt" };
 	gdi_radar_add_entity(ctx, &e3);
-	entity e4{ 50, 800, 10, entity_color::EC_RED, "lowlife" };
+	entity e4{ 50, 800, 0.0f, 10.0f, entity_color::EC_RED, "lowlife" };
 	gdi_radar_add_entity(ctx, &e4);
-	entity e5{ 250, 100, 0, entity_color::EC_BLACK, "dead" };
+	entity e5{ 250, 100, 0.0f, 0.0f, entity_color::EC_BLACK, "dead" };
 	gdi_radar_add_entity(ctx, &e5);
 
 #if 0
@@ -51,9 +52,11 @@ int main()
 		Sleep(200);
 
 		e3.pos[0]++;
+		e3.angle -= 0.1f;
 		gdi_radar_set_entity(ctx, 2, &e3);
 		e4.pos[0]++;
 		e4.pos[1]++;
+		e4.angle += 0.1f;
 		gdi_radar_set_entity(ctx, 3, &e4);
 	} while (gdi_radar_process_window_events_nonblocking(ctx));
 #endif

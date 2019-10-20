@@ -10,6 +10,7 @@ struct gdi_radar_config {
 	double minimumUpdateTime;
 	UINT64 maximumRedrawFails;
 	size_t reservedEntities;
+	bool drawAngles;
 };
 
 struct gdi_radar_context;
@@ -32,12 +33,13 @@ enum entity_color {
 
 struct entity {
 	int pos[2];
+	float angle;
 	float health;
 	enum entity_color color;
 	const char *name;
 };
 
-
+static float degree2radian(int a) { return (a * 0.017453292519f); }
 void gdi_radar_add_entity(struct gdi_radar_context * const ctx,
 	struct entity * const ent);
 void gdi_radar_set_entity(struct gdi_radar_context * const ctx, size_t i,

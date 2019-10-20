@@ -41,11 +41,18 @@ struct gdi_radar_context
 	UINT64 GameMapWidth;
 	UINT64 GameMapHeight;
 	size_t reservedEntities;
+	bool drawAngles;
 
 	struct gdi_radar_drawing drawing;
 	std::vector<struct entity> entities;
 };
 
+
+static inline void getEndPoint(float angle, int len, int start_x,
+	int start_y, int *end_x, int *end_y) {
+	*end_x = (int)(start_x + len * cos(angle));
+	*end_y = (int)(start_y + len * sin(angle));
+}
 
 static void draw_entity(struct gdi_radar_context * const ctx, struct entity * const ent)
 {
@@ -57,6 +64,19 @@ static void draw_entity(struct gdi_radar_context * const ctx, struct entity * co
 	DrawText(hdc, TEXT("Michael Morrison"), -1, &rect,
 		DT_SINGLELINE | DT_CENTER | DT_VCENTER);
 #endif
+
+	float frealx = ent->pos[0] * ((float)ctx->drawing.GameMapWindowWidth / ctx->GameMapWidth);
+	float frealy = ent->pos[1] * ((float)ctx->drawing.GameMapWindowHeight / ctx->GameMapHeight);
+	int realx = (int)frealx;
+	int realy = (int)frealy;
+
+	if (ctx->drawAngles) {
+		int endx = 0, endy = 0;
+		getEndPoint(ent->angle, 15, realx, realy, &endx, &endy);
+		SelectObject(ctx->drawing.hdc, ctx->drawing.DefaultPen);
+		POINT lines[] = { { realx, realy }, { endx, endy } };
+		Polyline(ctx->drawing.hdc, lines, 2);
+	}
 
 	switch (ent->color) {
 	case EC_BLUE:
@@ -70,10 +90,6 @@ static void draw_entity(struct gdi_radar_context * const ctx, struct entity * co
 		break;
 	}
 
-	float frealx = ent->pos[0] * ((float)ctx->drawing.GameMapWindowWidth / ctx->GameMapWidth);
-	float frealy = ent->pos[1] * ((float)ctx->drawing.GameMapWindowHeight / ctx->GameMapHeight);
-	int realx = (int)frealx;
-	int realy = (int)frealy;
 	Ellipse(ctx->drawing.hdc, realx - 5, realy - 5, realx + 5, realy + 5);
 }
 
@@ -210,6 +226,7 @@ struct gdi_radar_context * const
 	result->maximumRedrawFails = cfg->maximumRedrawFails;
 	result->reservedEntities = cfg->reservedEntities;
 	result->entities.reserve(result->reservedEntities);
+	result->drawAngles = cfg->drawAngles;
 
 	/* other */
 	result->wc.hbrBackground = CreateSolidBrush(RGB(0, 0, 0));
