@@ -16,7 +16,7 @@ struct gdi_radar_config {
 struct gdi_radar_context;
 
 
-static HINSTANCE gdi_radar_get_fake_hinstance()
+static inline HINSTANCE gdi_radar_get_fake_hinstance()
 {
 	LONG_PTR hi = GetWindowLongW(GetActiveWindow(), -6);
 	return (HINSTANCE)hi;
@@ -39,7 +39,9 @@ struct entity {
 	const char *name;
 };
 
-static inline float degree2radian(int a) { return (a * 0.017453292519f); }
+static inline float degree2radian(int a) {
+	return (a * 0.017453292519f);
+}
 void gdi_radar_add_entity(struct gdi_radar_context * const ctx,
 	struct entity * const ent);
 void gdi_radar_set_entity(struct gdi_radar_context * const ctx, size_t i,
