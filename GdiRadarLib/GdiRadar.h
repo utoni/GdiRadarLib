@@ -39,7 +39,7 @@ struct entity {
 	const char *name;
 };
 
-static float degree2radian(int a) { return (a * 0.017453292519f); }
+static inline float degree2radian(int a) { return (a * 0.017453292519f); }
 void gdi_radar_add_entity(struct gdi_radar_context * const ctx,
 	struct entity * const ent);
 void gdi_radar_set_entity(struct gdi_radar_context * const ctx, size_t i,
@@ -48,7 +48,8 @@ void gdi_radar_clear_entities(struct gdi_radar_context * const ctx);
 bool gdi_radar_redraw_if_necessary(struct gdi_radar_context * const ctx);
 void gdi_radar_set_game_dimensions(struct gdi_radar_context * const ctx,
 	UINT64 GameMapWidth, UINT64 GameMapHeight, bool StickToBottom = true);
-static void gdi_radar_set_game_dimensions(struct gdi_radar_context * const ctx,
+static inline void gdi_radar_set_game_dimensions(
+	struct gdi_radar_context * const ctx,
 	float GameMapWidth, float GameMapHeight, bool StickToBottom = true)
 {
 	gdi_radar_set_game_dimensions(ctx,
