@@ -165,7 +165,9 @@ static LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM l
 
 	case WM_PAINT:
 	{
+#ifdef _DEBUG
 		DBG("%s\n", "WM_PAINT");
+#endif
 		PAINTSTRUCT ps;
 
 		BeginPaint(hwnd, &ps);
@@ -196,10 +198,14 @@ static LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM l
 		DBG("%s\n", "WM_CHAR");
 		break;
 	case WM_MOVE:
+#ifdef _DEBUG
 		DBG("%s\n", "WM_MOVE");
+#endif
 		break;
 	case WM_SIZE:
+#ifdef _DEBUG
 		DBG("%s\n", "WM_SIZE");
+#endif
 		GetClientRect(hwnd, &drawing->DC_Dimensions);
 		CalcGameToWindowDimensions(wnd_ctx);
 		break;
@@ -344,9 +350,18 @@ void gdi_radar_clear_entities(struct gdi_radar_context * const ctx)
 	ctx->entities.clear();
 }
 
-bool gdi_radar_redraw_if_necessary(struct gdi_radar_context * const ctx)
+static bool gdi_radar_is_redraw_necessary(struct gdi_radar_context * const ctx,
+	double * cpu_time_used)
 {
-	clock_t end;
+	clock_t end = clock();
+
+	*cpu_time_used = ((double)(end - ctx->lastTimeUpdated)) / CLOCKS_PER_SEC;
+
+	return *cpu_time_used > ctx->minimumUpdateTime;
+}
+
+bool gdi_radar_check_if_redraw_necessary(struct gdi_radar_context * const ctx)
+{
 	double cpu_time_used;
 
 	if (!ctx)
@@ -354,13 +369,19 @@ bool gdi_radar_redraw_if_necessary(struct gdi_radar_context * const ctx)
 		return false;
 	}
 
-	end = clock();
-	cpu_time_used = ((double)(end - ctx->lastTimeUpdated)) / CLOCKS_PER_SEC;
-#ifdef _DEBUG
-	DBG("Time past after last update: %lf\n", cpu_time_used);
-#endif
+	return gdi_radar_is_redraw_necessary(ctx, &cpu_time_used);
+}
 
-	if (cpu_time_used > ctx->minimumUpdateTime) {
+bool gdi_radar_redraw_if_necessary(struct gdi_radar_context * const ctx)
+{
+	double cpu_time_used;
+
+	if (!ctx)
+	{
+		return false;
+	}
+
+	if (gdi_radar_is_redraw_necessary(ctx, &cpu_time_used)) {
 		if (cpu_time_used > ctx->minimumUpdateTime * ctx->maximumRedrawFails) {
 			DBG("ERROR: Redraw failed for the last %llu times!\n",
 				ctx->maximumRedrawFails);
@@ -368,6 +389,10 @@ bool gdi_radar_redraw_if_necessary(struct gdi_radar_context * const ctx)
 		}
 		RedrawWindow(ctx->myDrawWnd, NULL, NULL, RDW_ERASE | RDW_INVALIDATE | RDW_ALLCHILDREN);
 	}
+
+#ifdef _DEBUG
+	DBG("Time past after last update: %lf\n", cpu_time_used);
+#endif
 
 	return true;
 }

@@ -47,6 +47,7 @@ void gdi_radar_add_entity(struct gdi_radar_context * const ctx,
 void gdi_radar_set_entity(struct gdi_radar_context * const ctx, size_t i,
 	struct entity * const ent);
 void gdi_radar_clear_entities(struct gdi_radar_context * const ctx);
+bool gdi_radar_check_if_redraw_necessary(struct gdi_radar_context * const ctx);
 bool gdi_radar_redraw_if_necessary(struct gdi_radar_context * const ctx);
 void gdi_radar_set_game_dimensions(struct gdi_radar_context * const ctx,
 	UINT64 GameMapWidth, UINT64 GameMapHeight, bool StickToBottom = true);
