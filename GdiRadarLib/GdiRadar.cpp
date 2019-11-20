@@ -216,6 +216,11 @@ static LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM l
 	return DefWindowProcW(hwnd, message, wparam, lparam);
 }
 
+HWND gdi_radar_get_hwnd(struct gdi_radar_context * const ctx)
+{
+	return ctx->myDrawWnd;
+}
+
 struct gdi_radar_context * const
 	gdi_radar_configure(struct gdi_radar_config const * const cfg,
 		HINSTANCE hInst)

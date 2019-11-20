@@ -21,6 +21,7 @@ static inline HINSTANCE gdi_radar_get_fake_hinstance()
 	LONG_PTR hi = GetWindowLongW(GetActiveWindow(), -6);
 	return (HINSTANCE)hi;
 }
+HWND gdi_radar_get_hwnd(struct gdi_radar_context * const ctx);
 struct gdi_radar_context * const
 	gdi_radar_configure(struct gdi_radar_config const * const cfg,
 		HINSTANCE hInst);
