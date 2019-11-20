@@ -72,7 +72,9 @@ static void draw_entity(struct gdi_radar_context * const ctx, struct entity * co
 
 	if (ctx->drawAngles) {
 		int endx = 0, endy = 0;
-		getEndPoint(ent->angle, 15, realx, realy, &endx, &endy);
+		getEndPoint(ent->angle, 
+			(ent->angle_line_length ? ent->angle_line_length : 15),
+			realx, realy, &endx, &endy);
 		SelectObject(ctx->drawing.hdc, ctx->drawing.DefaultPen);
 		POINT lines[] = { { realx, realy }, { endx, endy } };
 		Polyline(ctx->drawing.hdc, lines, 2);
