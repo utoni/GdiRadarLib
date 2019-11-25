@@ -390,7 +390,7 @@ bool gdi_radar_redraw_if_necessary(struct gdi_radar_context * const ctx)
 
 	if (gdi_radar_is_redraw_necessary(ctx, &cpu_time_used)) {
 		if (cpu_time_used > ctx->minimumUpdateTime * ctx->maximumRedrawFails) {
-			DBG("ERROR: Redraw failed for the last %llu times!\n",
+			DBG("ERROR: Redraw failed for the at least %llu times!\n",
 				ctx->maximumRedrawFails);
 			return false;
 		}

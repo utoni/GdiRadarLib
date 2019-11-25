@@ -36,7 +36,6 @@ struct entity {
 	int pos[2];
 	float angle;
 	int angle_line_length;
-	float health;
 	enum entity_color color;
 	const char *name;
 };
